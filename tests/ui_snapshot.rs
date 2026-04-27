@@ -2284,7 +2284,7 @@ fn snapshot_background_status_shows_bg_command_row() {
      ≡1  ●0  ◎1  ◐0  ○0  ✕0
     ⓘ                            — ▾
     ┃ ◎ claude
-        npm run dev
+        $ npm run dev
     ╭ Activity │ Git ──────────────╮
     │        No activity yet       │
     ╰──────────────────────────────╯
@@ -2315,7 +2315,7 @@ fn snapshot_running_pane_still_shows_live_bg_command() {
      ≡1  ●1  ◎0  ◐0  ○0  ✕0
     ⓘ                            — ▾
     ┃ ● claude                   10s
-        cargo watch
+        $ cargo watch
     ╭ Activity │ Git ──────────────╮
     │        No activity yet       │
     ╰──────────────────────────────╯
@@ -2345,7 +2345,7 @@ fn snapshot_background_long_command_truncates_with_ellipsis() {
      ≡1  ●0  ◎1  ◐0  ○0  ✕0
     ⓘ                        — ▾
     ┃ ◎ claude
-        cargo run --bin very-lo…
+        $ cargo run --bin very-…
     ╭ Activity │ Git ──────────╮
     │      No activity yet     │
     ╰──────────────────────────╯

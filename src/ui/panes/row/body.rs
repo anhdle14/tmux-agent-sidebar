@@ -106,10 +106,10 @@ pub(super) fn wait_reason_row(
 }
 
 pub(super) fn background_hint_row(ctx: &RowCtx, cmd: &str) -> Line<'static> {
-    const INDENT: &str = "  ";
-    let room = ctx.inner_width.saturating_sub(display_width(INDENT));
+    const PREFIX: &str = "  $ ";
+    let room = ctx.inner_width.saturating_sub(display_width(PREFIX));
     let shown = truncate_to_width(cmd.trim(), room);
-    let text = format!("{INDENT}{shown}");
+    let text = format!("{PREFIX}{shown}");
     let text_dw = display_width(&text);
     ctx.row_line(
         vec![Span::styled(
