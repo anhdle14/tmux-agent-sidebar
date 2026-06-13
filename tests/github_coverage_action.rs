@@ -39,3 +39,14 @@ fn ci_still_runs_existing_rust_quality_gates() {
         );
     }
 }
+
+#[test]
+fn ci_checkout_steps_do_not_persist_credentials() {
+    let workflow = ci_workflow();
+
+    assert_eq!(
+        workflow.matches("persist-credentials: false").count(),
+        2,
+        "each checkout step should disable persisted credentials"
+    );
+}
