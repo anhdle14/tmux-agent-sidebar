@@ -3,7 +3,7 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import sitemap from '@astrojs/sitemap';
 
-const SITE = 'https://hiroppy.github.io';
+const SITE = 'https://anhdle14.github.io';
 const BASE = '/tmux-agent-sidebar';
 const OG_IMAGE = `${SITE}${BASE}/og-image.png`;
 const DESCRIPTION =
@@ -26,7 +26,7 @@ export default defineConfig({
         {
           icon: 'github',
           label: 'GitHub',
-          href: 'https://github.com/hiroppy/tmux-agent-sidebar',
+          href: 'https://github.com/anhdle14/tmux-agent-sidebar',
         },
         {
           // Starlight's icon enum has no `x` — `twitter` renders the
@@ -38,7 +38,7 @@ export default defineConfig({
       ],
       editLink: {
         baseUrl:
-          'https://github.com/hiroppy/tmux-agent-sidebar/edit/main/website/',
+          'https://github.com/anhdle14/tmux-agent-sidebar/edit/main/website/',
       },
       customCss: ['./src/styles/custom.css'],
       components: {
@@ -78,9 +78,9 @@ export default defineConfig({
             description: DESCRIPTION,
             url: `${SITE}${BASE}/`,
             image: OG_IMAGE,
-            codeRepository: 'https://github.com/hiroppy/tmux-agent-sidebar',
+            codeRepository: 'https://github.com/anhdle14/tmux-agent-sidebar',
             programmingLanguage: 'Rust',
-            license: 'https://github.com/hiroppy/tmux-agent-sidebar/blob/main/LICENSE',
+            license: 'https://github.com/anhdle14/tmux-agent-sidebar/blob/main/LICENSE',
             offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
             author: {
               '@type': 'Person',
