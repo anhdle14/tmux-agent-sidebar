@@ -62,45 +62,67 @@ pub(super) mod pane_line_field {
     pub const MIN_FIELDS: usize = 22;
 }
 
+/// Field delimiter for the hot `list-panes` query: ASCII Unit Separator (0x1F).
+///
+/// Fields are referenced raw (`#{field}`) and joined by this control byte
+/// instead of being wrapped in tmux's `#{q:...}` quoting. `#{q:...}` is the
+/// root cause of a tmux *server* memory leak on tmux 3.2a (issue #85): the 1s
+/// refresh loop runs `list-panes -a` with one `#{q:...}` expansion per field
+/// per pane, and each expansion leaks server-side memory that is never
+/// reclaimed until `kill-server`, growing the server RSS without bound
+/// (~2 GB/day in the field report; new-pane `fork()` then costs seconds).
+/// Newer tmux (3.6b) does not leak, confirming a tmux-side regression that the
+/// sidebar merely triggers via high-frequency polling.
+///
+/// `q:` only ever escaped the previous `|` delimiter (it passes newlines
+/// through untouched), so a US delimiter — which never occurs in pane paths,
+/// names, commands, prompts, branches, or session ids — is a strictly safer
+/// replacement and removes the need for any per-field quoting. Hook-written
+/// values that can carry arbitrary text are additionally scrubbed of this
+/// delimiter by `sanitize_tmux_value`.
+pub(crate) const PANE_FIELD_DELIMITER: char = '\x1f';
+
 /// Build the tmux `list-panes -F` format used by [`query_sessions`].
-/// Every field is quoted with `#{q:...}` so embedded pipes in user content
-/// survive the split.
+/// Fields are referenced raw and joined by [`PANE_FIELD_DELIMITER`] — see that
+/// constant for why `#{q:...}` quoting is deliberately avoided.
 fn pane_format() -> String {
     [
-        q("session_name"),
-        q("window_id"),
-        q("window_index"),
-        q("window_name"),
-        q("window_active"),
-        q("automatic-rename"),
-        q("pane_active"),
-        q(PANE_STATUS),
-        q(PANE_ATTENTION),
-        q(PANE_AGENT),
-        q(PANE_NAME),
-        q("pane_current_path"),
-        q("pane_current_command"),
-        q(PANE_ROLE),
-        q("pane_id"),
-        q(PANE_PROMPT),
-        q(PANE_PROMPT_SOURCE),
-        q(PANE_STARTED_AT),
-        q(PANE_WAIT_REASON),
-        q("pane_pid"),
-        q(PANE_SUBAGENTS),
-        q(PANE_CWD),
-        q(PANE_PERMISSION_MODE),
-        q(PANE_WORKTREE_NAME),
-        q(PANE_WORKTREE_BRANCH),
-        q(PANE_SESSION_ID),
-        q(SPAWNED_OPTION),
-        q(PANE_BG_CMD),
+        f("session_name"),
+        f("window_id"),
+        f("window_index"),
+        f("window_name"),
+        f("window_active"),
+        f("automatic-rename"),
+        f("pane_active"),
+        f(PANE_STATUS),
+        f(PANE_ATTENTION),
+        f(PANE_AGENT),
+        f(PANE_NAME),
+        f("pane_current_path"),
+        f("pane_current_command"),
+        f(PANE_ROLE),
+        f("pane_id"),
+        f(PANE_PROMPT),
+        f(PANE_PROMPT_SOURCE),
+        f(PANE_STARTED_AT),
+        f(PANE_WAIT_REASON),
+        f("pane_pid"),
+        f(PANE_SUBAGENTS),
+        f(PANE_CWD),
+        f(PANE_PERMISSION_MODE),
+        f(PANE_WORKTREE_NAME),
+        f(PANE_WORKTREE_BRANCH),
+        f(PANE_SESSION_ID),
+        f(SPAWNED_OPTION),
+        f(PANE_BG_CMD),
     ]
-    .join("|")
+    .join(&PANE_FIELD_DELIMITER.to_string())
 }
 
-fn q(field: &str) -> String {
-    format!("#{{q:{field}}}")
+/// Wrap a tmux format field reference: `name` -> `#{name}`. Unlike the former
+/// `#{q:name}`, this performs no quoting (see [`PANE_FIELD_DELIMITER`]).
+fn f(field: &str) -> String {
+    format!("#{{{field}}}")
 }
 
 type SessionMap = indexmap::IndexMap<String, indexmap::IndexMap<String, WindowInfo>>;
@@ -147,7 +169,7 @@ fn build_session_hierarchy(
     let mut seen_pids: HashSet<u32> = HashSet::new();
 
     for line in all_panes_output.lines() {
-        let parts = split_tmux_fields(line, '|');
+        let parts = split_tmux_fields(line);
         if parts.len() < session_line_field::MIN_FIELDS {
             continue;
         }
@@ -247,7 +269,7 @@ fn finalize_sessions(sessions_map: SessionMap) -> Vec<SessionInfo> {
 /// prompt, branch) — see `build_session_hierarchy`.
 #[cfg(test)]
 pub(crate) fn parse_pane_line(line: &str) -> Option<PaneInfo> {
-    let parts = split_tmux_fields(line, '|');
+    let parts = split_tmux_fields(line);
     parse_pane_fields_with_processes(&parts, None)
 }
 
@@ -439,7 +461,7 @@ fn process_snapshot_for_panes(all_panes_output: &str) -> Option<ProcessSnapshot>
 
 fn pane_output_needs_process_snapshot(all_panes_output: &str) -> bool {
     all_panes_output.lines().any(|line| {
-        let parts = split_tmux_fields(line, '|');
+        let parts = split_tmux_fields(line);
         if parts.len() < session_line_field::MIN_FIELDS {
             return false;
         }
@@ -523,38 +545,16 @@ fn parse_subagents(raw: &str) -> Vec<String> {
 }
 
 /// Split a tmux format line while honoring tmux `#{q:...}` backslash escapes.
-fn split_tmux_fields(line: &str, delimiter: char) -> Vec<String> {
-    let mut fields = Vec::new();
-    let mut current = String::new();
-    let mut escaped = false;
-
-    for ch in line.chars() {
-        if escaped {
-            current.push(ch);
-            escaped = false;
-            continue;
-        }
-
-        if ch == '\\' {
-            escaped = true;
-            continue;
-        }
-
-        if ch == delimiter {
-            fields.push(current);
-            current = String::new();
-            continue;
-        }
-
-        current.push(ch);
-    }
-
-    if escaped {
-        current.push('\\');
-    }
-
-    fields.push(current);
-    fields
+/// Split one `list-panes -F` line into fields on [`PANE_FIELD_DELIMITER`].
+///
+/// No unescaping is performed: the format references fields raw and the US
+/// delimiter does not occur in real values, so a literal `|`, backslash, or
+/// any other printable character inside a field is preserved verbatim. This
+/// is what lets the format drop the leaky `#{q:...}` quoting (issue #85).
+fn split_tmux_fields(line: &str) -> Vec<String> {
+    line.split(PANE_FIELD_DELIMITER)
+        .map(ToString::to_string)
+        .collect()
 }
 
 #[cfg(test)]
@@ -766,7 +766,7 @@ mod tests {
     // ─── parse_pane_line tests ──────────────────────────────────────
 
     fn make_pane_line(fields: &[&str]) -> String {
-        fields.join("|")
+        fields.join(&PANE_FIELD_DELIMITER.to_string())
     }
 
     fn full_fields() -> Vec<&'static str> {
@@ -923,8 +923,11 @@ mod tests {
 
     #[test]
     fn parse_pane_line_preserves_pipe_in_path() {
+        // With the US field delimiter, a literal `|` in a value is no longer
+        // special and survives without any escaping (issue #85 removed the
+        // `#{q:...}` quoting that previously backslash-escaped it).
         let mut fields = full_fields();
-        fields[5] = "/home/user/a\\|b";
+        fields[5] = "/home/user/a|b";
         fields[15] = "";
         let line = make_pane_line(&fields);
         let pane = parse_pane_line(&line).unwrap();
@@ -932,9 +935,13 @@ mod tests {
     }
 
     #[test]
-    fn split_tmux_fields_unescapes_delimiter() {
-        let fields = split_tmux_fields("one|two\\|still-two|three", '|');
-        assert_eq!(fields, vec!["one", "two|still-two", "three"]);
+    fn split_tmux_fields_splits_on_unit_separator() {
+        // A literal `|` (or backslash) inside a field is preserved verbatim,
+        // since the US delimiter never collides with real content and no
+        // unescaping is performed.
+        let line = "one\u{1f}two|still-two\u{1f}three\\four";
+        let fields = split_tmux_fields(line);
+        assert_eq!(fields, vec!["one", "two|still-two", "three\\four"]);
     }
 
     #[test]
@@ -1262,7 +1269,7 @@ mod tests {
         fields[21] = "/tmp"; // @pane_cwd
         let pid_str = pane_pid.to_string();
         fields[19] = &pid_str; // pane_pid
-        fields.join("|")
+        fields.join(&PANE_FIELD_DELIMITER.to_string())
     }
 
     #[test]

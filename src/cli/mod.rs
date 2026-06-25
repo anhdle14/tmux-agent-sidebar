@@ -89,7 +89,11 @@ fn set_attention(pane: &str, state: &str) {
 /// data (e.g. the bg-shell ps sweep) must apply the same normalization
 /// so round-tripping through storage doesn't silently break equality.
 pub(crate) fn sanitize_tmux_value(s: &str) -> String {
-    s.replace(['\n', '|'], " ")
+    // `|` is no longer the query delimiter, but keep stripping it so legacy
+    // pipe-delimited consumers (e.g. the activity log) stay safe. `\x1f` is
+    // the current `list-panes` field delimiter (see `tmux::query`), so values
+    // that round-trip through that raw path must never contain it.
+    s.replace(['\n', '|', '\x1f'], " ")
 }
 
 // ─── set-status subcommand ──────────────────────────────────────────────────
@@ -196,6 +200,13 @@ mod tests {
     #[test]
     fn sanitize_consecutive_pipes_and_newlines() {
         assert_eq!(sanitize_tmux_value("a||\n\nb"), "a    b");
+    }
+
+    #[test]
+    fn sanitize_replaces_unit_separator() {
+        // The `list-panes` query field delimiter must never survive in a
+        // hook-written value or it would corrupt field splitting (issue #85).
+        assert_eq!(sanitize_tmux_value("a\u{1f}b"), "a b");
     }
 
     // ─── local_time_hhmm tests ──────────────────────────────────────

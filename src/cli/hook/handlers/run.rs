@@ -106,7 +106,7 @@ pub(in crate::cli::hook) fn on_stop_failure(
     clear_run_state(pane);
     mark_task_reset(pane);
     if !error.is_empty() {
-        tmux::set_pane_option(pane, tmux::PANE_WAIT_REASON, error);
+        tmux::set_pane_option(pane, tmux::PANE_WAIT_REASON, &sanitize_tmux_value(error));
     }
     set_status(pane, "error");
     let _ = notify_lifecycle(
