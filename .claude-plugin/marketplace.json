@@ -1,13 +1,15 @@
 {
-  "name": "hiroppy",
+  "name": "anhdle14",
   "owner": {
-    "name": "Yuta Hiroto"
+    "name": "Duc Le",
+    "url": "https://github.com/anhdle14"
   },
   "plugins": [
     {
       "name": "tmux-agent-sidebar",
       "source": "./",
-      "description": "Monitor Claude Code agents across tmux panes in a real-time sidebar TUI"
+      "version": "0.14.0",
+      "description": "Monitor Claude Code agents across tmux panes in a real-time sidebar TUI (personal fork of hiroppy/tmux-agent-sidebar)"
     }
   ]
 }

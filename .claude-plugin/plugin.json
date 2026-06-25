@@ -1,12 +1,13 @@
 {
   "name": "tmux-agent-sidebar",
-  "version": "0.13.0",
-  "description": "Monitor Claude Code agents across tmux panes in a real-time sidebar TUI",
+  "version": "0.14.0",
+  "description": "Monitor Claude Code agents across tmux panes in a real-time sidebar TUI (personal fork of hiroppy/tmux-agent-sidebar)",
+  "note": "Personal fork maintained by anhdle14. Original project by Yuta Hiroto (hiroppy): https://github.com/hiroppy/tmux-agent-sidebar",
   "author": {
-    "name": "Yuta Hiroto",
-    "url": "https://github.com/hiroppy"
+    "name": "Duc Le",
+    "url": "https://github.com/anhdle14"
   },
-  "repository": "https://github.com/hiroppy/tmux-agent-sidebar",
+  "repository": "https://github.com/anhdle14/tmux-agent-sidebar",
   "license": "MIT",
   "keywords": ["tmux", "agent", "monitoring", "tui", "sidebar"]
 }
