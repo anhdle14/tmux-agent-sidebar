@@ -11,7 +11,14 @@ elif command -v "tmux-agent-sidebar" &>/dev/null; then
 fi
 
 if [[ -z "$SIDEBAR_BINARY" ]]; then
-    tmux run-shell -b "bash '$PLUGIN_DIR/install-wizard.sh'"
+    # This fork ships no prebuilt release binaries, so build straight from the
+    # cloned source when a Rust toolchain is available; only fall back to the
+    # interactive download/build menu when cargo is missing.
+    if command -v cargo &>/dev/null; then
+        tmux new-window "bash '$PLUGIN_DIR/install-wizard.sh' build-from-source"
+    else
+        tmux run-shell -b "bash '$PLUGIN_DIR/install-wizard.sh'"
+    fi
     exit 0
 fi
 
@@ -19,7 +26,11 @@ INSTALLED_VERSION="$("$SIDEBAR_BINARY" version 2>/dev/null)"
 EXPECTED_VERSION="$(sed -n 's/^version *= *"\(.*\)"/\1/p' "$PLUGIN_DIR/Cargo.toml")"
 
 if [[ -n "$EXPECTED_VERSION" && "$INSTALLED_VERSION" != "$EXPECTED_VERSION" ]]; then
-    tmux run-shell -b "SIDEBAR_UPDATE=1 bash '$PLUGIN_DIR/install-wizard.sh'"
+    if command -v cargo &>/dev/null; then
+        tmux new-window "bash '$PLUGIN_DIR/install-wizard.sh' build-from-source"
+    else
+        tmux run-shell -b "SIDEBAR_UPDATE=1 bash '$PLUGIN_DIR/install-wizard.sh'"
+    fi
     exit 0
 fi
 
